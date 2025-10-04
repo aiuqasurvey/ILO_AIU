@@ -1,0 +1,50 @@
+name: intended_learning_outcomes_aiu
+description: "A new Flutter project."
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ">=3.0.0 <4.0.0"
+
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+  path_provider: ^2.0.0
+  csv: ^5.0.0
+  docx_template_fork: ^0.5.0
+  http: ^1.1.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+ 
+l10n:
+  arb-dir: lib/l10n
+  template-arb-file: app_en.arb
+  output-localization-file: app_localizations.dart
+
+
+flutter:
+  uses-material-design: true
+  generate: true
+  assets:
+    - assets/template.docx
+    - assets/logo1.png
+
+
+
+
+
+dependency_overrides:
+  path: ^1.9.1
+  collection: ^1.19.1
+
+
+
