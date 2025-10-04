@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const sqlite3 = require('sqlite3').verbose();
 const cors = require('cors');
@@ -5,10 +6,15 @@ const bcrypt = require('bcrypt');
 const path = require('path');
 
 const app = express();
-const PORT = 5000;
+const PORT = process.env.PORT || 5000;
+if (!process.env.DB_PATH) {
+  console.error('❌ DB_PATH is not defined in .env file');
+  process.exit(1);
+}
 
 // Database
-const dbPath = path.resolve(__dirname, 'database.db');
+const dbPath = path.resolve(__dirname, process.env.DB_PATH);
+console.log('DB_PATH from .env:', process.env.DB_PATH);
 const db = new sqlite3.Database(dbPath, (err) => {
   if (err) console.error('❌ Failed to connect to database:', err.message);
   else console.log('✅ Connected to SQLite database.');
@@ -33,7 +39,7 @@ function allAsync(query, params = []) {
 }
 
 // Middlewares
-app.use(cors({ origin: '*' }));
+app.use(cors({ origin:'https:ilo-frontend.onrender.com' }));
 app.use(express.json());
 
 // -------------------- GET ROUTES -------------------- //
@@ -546,9 +552,22 @@ app.post('/api/add-verb', (req, res) => {
   );
 });
 
+// --- Example API ---
+app.get('/api/test', (req, res) => {
+  db.get('SELECT datetime("now") AS current_time', [], (err, row) => {
+    if (err) {
+      console.error('Database error:', err);
+      res.status(500).json({ error: 'Database error' });
+    } else {
+      res.json({ message: 'Hello from backend!', time: row.current_time });
+    }
+  });
+});
 
-app.use(express.static(path.join(__dirname, 'build/web')));
-// Catch-all (for Flutter web routing, AFTER API routes)
+
+const flutterBuildPath = path.join(__dirname, '../build/web');
+app.use(express.static(flutterBuildPath));
+
 app.get(/.*/, (req, res) => {
   res.sendFile(path.join(flutterBuildPath, 'index.html'));
 });
