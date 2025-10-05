@@ -176,10 +176,6 @@ Future<void> updateILO(int submissionId, Map<String, dynamic> updatedData) async
     headers: {'Content-Type': 'application/json'},
     body: json.encode({'email': email, 'password': password}),
   );
-
-  print('Status code: ${res.statusCode}');
-  print('Response body: ${res.body}');
-
   if (res.statusCode == 200) {
     try {
       final data = Map<String, dynamic>.from(json.decode(res.body));

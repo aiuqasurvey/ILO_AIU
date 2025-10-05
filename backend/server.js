@@ -13,6 +13,55 @@ if (!process.env.DB_PATH) {
   process.exit(1);
 }
 
+const whitelist = [
+  'http://localhost:5173', 
+  'http://127.0.0.1:5173',
+  'https://ilo-aiu-web.onrender.com'
+];
+
+const corsOptions = {
+  origin: function (origin, callback) {
+    console.log('CORS check for origin:', origin);
+
+    if (!origin || whitelist.includes(origin)) {
+      callback(null, true);
+    } else if (origin.startsWith('http://localhost:')) {
+      // Allow any localhost port
+      callback(null, true);
+    } else {
+      console.warn('CORS blocked:', origin);
+      callback(null, false); // never crash
+    }
+  },
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true
+};
+
+
+app.use(cors(corsOptions));
+
+// Handle preflight requests globally
+app.options('*', cors(corsOptions), (req, res) => {
+  res.sendStatus(200);
+});
+
+
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions), (req, res) => {
+  res.sendStatus(200);
+});
+app.use((req, res, next) => {
+  console.log('Request origin:', req.headers.origin);
+  next();
+});
+
+// -------------------- MIDDLEWARES -------------------- //
+app.use(express.json());
+
+app.use(cors({ origin: true, credentials: true }));
+
+
 // -------------------- DATABASE -------------------- //
 const dbPath = path.resolve(__dirname, process.env.DB_PATH);
 console.log('DB_PATH from .env:', process.env.DB_PATH);
@@ -41,33 +90,10 @@ function allAsync(query, params = []) {
   });
 }
 
-// -------------------- CORS -------------------- //
-const whitelist = [
-  'https://ilo-aiu-web.onrender.com', // live frontend
-  'http://localhost:5173',            // local Flutter dev
-  'http://127.0.0.1:5173',
-  'http://localhost:5000'             // Postman or local backend
-];
-
-const corsOptions = {
-  origin: function (origin, callback) {
-    if (!origin || whitelist.indexOf(origin) !== -1) {
-      callback(null, true);
-    } else {
-      callback(new Error('CORS not allowed'));
-    }
-  },
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true
-};
-
-// Apply CORS globally
-app.options('*', cors(corsOptions));
-app.use(cors(corsOptions));
-
-// -------------------- MIDDLEWARES -------------------- //
-app.use(express.json());
+app.use((err, req, res, next) => {
+  console.error('Server error:', err);
+  res.status(500).json({ error: err.message || 'Internal Server Error' });
+});
 
 // -------------------- ROUTES -------------------- //
 // Example: test route
@@ -248,46 +274,24 @@ app.post('/api/signup', async (req, res) => {
 });
 
 //login
-app.post('/api/login', async (req, res) => {
-  try {
-    const { email, password } = req.body;
-    if (!email || !password) {
-      return res.status(400).json({ error: 'Email and password required' });
-    }
+app.post('/api/login', (req, res) => {
+  const { email, password } = req.body || {};
 
-    db.get('SELECT * FROM users WHERE email = ?', [email], async (err, user) => {
-      if (err) {
-        console.error('DB error:', err);
-        return res.status(500).json({ error: 'Internal server error' });
-      }
-
-      if (!user) {
-        return res.status(401).json({ error: 'Invalid credentials' });
-      }
-
-      try {
-        const match = await bcrypt.compare(password, user.password);
-        if (!match) {
-          return res.status(401).json({ error: 'Invalid credentials' });
-        }
-
-        // SUCCESS
-        return res.status(200).json({
-          message: 'Login successful',
-          userId: user.id,
-          name: user.name,
-          role: user.role
-        });
-      } catch (bcryptErr) {
-        console.error('Bcrypt error:', bcryptErr);
-        return res.status(500).json({ error: 'Internal server error' });
-      }
-    });
-  } catch (err) {
-    console.error('Unexpected error:', err);
-    return res.status(500).json({ error: 'Internal server error' });
+  if (!email || !password) {
+    return res.status(400).json({ error: 'Email and password required' });
   }
+
+  db.get('SELECT * FROM users WHERE email = ?', [email], async (err, user) => {
+    if (err) return res.status(500).json({ error: 'Database error' });
+    if (!user) return res.status(401).json({ error: 'Invalid credentials' });
+
+    const match = await bcrypt.compare(password, user.password);
+    if (!match) return res.status(401).json({ error: 'Invalid credentials' });
+
+    res.json({ message: 'Login successful', userId: user.id, name: user.name, role: user.role });
+  });
 });
+
 
 
 
@@ -620,7 +624,7 @@ app.get(/^\/(?!api\/).*/, (req, res) => {
   res.sendFile(path.join(flutterBuildPath, 'index.html'));
 });
 
-/ -------------------- START SERVER -------------------- //
+// -------------------- START SERVER -------------------- //
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Server running at http://0.0.0.0:${PORT}`);
 });
