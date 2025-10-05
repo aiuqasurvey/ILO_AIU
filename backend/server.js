@@ -67,6 +67,7 @@ app.use(cors(corsOptions));
 
 // Handle preflight OPTIONS requests for all routes
 app.options('/api/*', cors(corsOptions));
+app.use('/api', cors(corsOptions));
 
 // -------------------- MIDDLEWARES -------------------- //
 app.use(express.json());
@@ -586,14 +587,13 @@ app.post('/api/add-verb', (req, res) => {
   );
 });
 
+
 const flutterBuildPath = path.join(__dirname, '../build/web');
 app.use(express.static(flutterBuildPath));
-
 app.get(/.*/, (req, res) => {
   res.sendFile(path.join(flutterBuildPath, 'index.html'));
 });
-
-// -------------------- START SERVER -------------------- //
+/ -------------------- START SERVER -------------------- //
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Server running at http://0.0.0.0:${PORT}`);
 });
