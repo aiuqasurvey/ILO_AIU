@@ -5,7 +5,7 @@ import 'package:flutter/foundation.dart' show debugPrint;
 const String baseUrl = String.fromEnvironment(
   'API_URL',
   defaultValue: 'http://localhost:5000/api', // for local
-  // or use: 'https://ilo-aiu-web.onrender.com' when deploying
+  // or use: 'https://ilo-aiu-web.onrender.com/api' when deploying
 );
 
 
