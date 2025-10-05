@@ -253,14 +253,14 @@ app.post('/api/login', (req, res) => {
   if (!email || !password) return res.status(400).json({ error: 'Email and password required' });
 
   db.get('SELECT * FROM users WHERE email = ?', [email], async (err, user) => {
-    if (err) return res.status(500).json({ error: err.message });
-    if (!user) return res.status(401).json({ error: 'Invalid credentials' });
+  if (err) return res.status(500).json({ error: err.message }); // ✅ handle DB error
+  if (!user) return res.status(401).json({ error: 'Invalid credentials' });
 
-    const match = await bcrypt.compare(password, user.password);
-    if (!match) return res.status(401).json({ error: 'Invalid credentials' });
+  const match = await bcrypt.compare(password, user.password);
+  if (!match) return res.status(401).json({ error: 'Invalid credentials' });
 
-    return res.json({ message: 'Login successful', userId: user.id, name: user.name, role: user.role });
-  });
+  return res.json({ message: 'Login successful', userId: user.id, name: user.name, role: user.role });
+});
 });
 
 
@@ -592,6 +592,7 @@ app.use(express.static(flutterBuildPath));
 app.get(/^\/(?!api\/).*/, (req, res) => {
   res.sendFile(path.join(flutterBuildPath, 'index.html'));
 });
+
 / -------------------- START SERVER -------------------- //
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Server running at http://0.0.0.0:${PORT}`);
