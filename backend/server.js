@@ -249,40 +249,44 @@ app.post('/api/signup', async (req, res) => {
 
 //login
 app.post('/api/login', async (req, res) => {
-  const { email, password } = req.body;
-
-  if (!email || !password) {
-    return res.status(400).json({ error: 'Email and password required' });
-  }
-
-  db.get('SELECT * FROM users WHERE email = ?', [email], async (err, user) => {
-    if (err) {
-      console.error('Database error:', err);
-      return res.status(500).json({ error: 'Internal server error' });
+  try {
+    const { email, password } = req.body;
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Email and password required' });
     }
 
-    if (!user) {
-      return res.status(401).json({ error: 'Invalid credentials' });
-    }
+    db.get('SELECT * FROM users WHERE email = ?', [email], async (err, user) => {
+      if (err) {
+        console.error('DB error:', err);
+        return res.status(500).json({ error: 'Internal server error' });
+      }
 
-    try {
-      const match = await bcrypt.compare(password, user.password);
-      if (!match) {
+      if (!user) {
         return res.status(401).json({ error: 'Invalid credentials' });
       }
 
-      // Successful login
-      res.json({
-        message: 'Login successful',
-        userId: user.id,
-        name: user.name,
-        role: user.role
-      });
-    } catch (bcryptErr) {
-      console.error('Bcrypt error:', bcryptErr);
-      res.status(500).json({ error: 'Internal server error' });
-    }
-  });
+      try {
+        const match = await bcrypt.compare(password, user.password);
+        if (!match) {
+          return res.status(401).json({ error: 'Invalid credentials' });
+        }
+
+        // SUCCESS
+        return res.status(200).json({
+          message: 'Login successful',
+          userId: user.id,
+          name: user.name,
+          role: user.role
+        });
+      } catch (bcryptErr) {
+        console.error('Bcrypt error:', bcryptErr);
+        return res.status(500).json({ error: 'Internal server error' });
+      }
+    });
+  } catch (err) {
+    console.error('Unexpected error:', err);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
 });
 
 
