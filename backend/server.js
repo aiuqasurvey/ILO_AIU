@@ -63,9 +63,6 @@ const corsOptions = {
 };
 
 // Apply CORS globally
-app.use(cors(corsOptions));
-
-// Handle preflight OPTIONS requests for all routes
 app.options('*', cors(corsOptions));
 app.use(cors(corsOptions));
 
@@ -250,21 +247,22 @@ app.post('/api/signup', async (req, res) => {
   });
 });
 
-
-// Login
-app.post('/api/login', async (req, res) => {
+//login
+app.post('/api/login', (req, res) => {
   const { email, password } = req.body;
   if (!email || !password) return res.status(400).json({ error: 'Email and password required' });
 
   db.get('SELECT * FROM users WHERE email = ?', [email], async (err, user) => {
+    if (err) return res.status(500).json({ error: err.message });
     if (!user) return res.status(401).json({ error: 'Invalid credentials' });
 
     const match = await bcrypt.compare(password, user.password);
     if (!match) return res.status(401).json({ error: 'Invalid credentials' });
 
-    res.json({ message: 'Login successful', userId: user.id, name: user.name, role: user.role });
+    return res.json({ message: 'Login successful', userId: user.id, name: user.name, role: user.role });
   });
 });
+
 
 // -------------------- CURRICULUMS -------------------- //
 
@@ -591,7 +589,7 @@ app.post('/api/add-verb', (req, res) => {
 const flutterBuildPath = path.join(__dirname, '../build/web');
 app.use(express.static(flutterBuildPath));
 
-app.get(/.*/, (req, res) => {
+app.get(/^\/(?!api\/).*/, (req, res) => {
   res.sendFile(path.join(flutterBuildPath, 'index.html'));
 });
 / -------------------- START SERVER -------------------- //
