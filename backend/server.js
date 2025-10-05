@@ -39,17 +39,35 @@ function allAsync(query, params = []) {
 }
 
 // Middlewares
-app.use(cors({
-  origin: [
-    'https://ilo-aiu.onrender.com',      
-    'http://localhost:5173',             
-    'http://127.0.0.1:5173',            
-    'http://localhost:5000'        
-  ],
-  credentials: true
-}));
+// Whitelist of allowed origins
+const whitelist = [
+  'https://ilo-aiu-web.onrender.com', // Live frontend
+  'http://localhost:5173',            // Flutter web local dev
+  'http://127.0.0.1:5173',
+  'http://localhost:5000'             // local backend (for Postman)
+];
 
+// CORS options
+const corsOptions = {
+  origin: function (origin, callback) {
+    // allow requests with no origin (like Postman)
+    if (!origin || whitelist.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      callback(new Error('CORS not allowed'));
+    }
+  },
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true,
+  preflightContinue: false,
+};
 
+// Enable CORS for all routes
+app.use(cors(corsOptions));
+
+// Handle preflight requests for all routes
+app.options('*', cors(corsOptions));
 
 app.use(express.json());
 
