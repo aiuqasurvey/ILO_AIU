@@ -168,24 +168,26 @@ Future<void> updateILO(int submissionId, Map<String, dynamic> updatedData) async
 
 
   Future<Map<String, dynamic>> login({
-    required String email,
-    required String password,
-  }) async {
-    final res = await http.post(
-      Uri.parse('$baseUrl/login'),
-      headers: {'Content-Type': 'application/json'},
-      body: json.encode({'email': email, 'password': password}),
-    );
-    if (res.statusCode == 200) {
-      final data = Map<String, dynamic>.from(json.decode(res.body));
-      return {
-        'userId': data['userId'],
-        'name': data['name'],
-        'role': data['role'],
-      };
-    }
-    throw Exception(json.decode(res.body)['error'] ?? 'Login failed');
+  required String email,
+  required String password,
+}) async {
+  final res = await http.post(
+    Uri.parse('$baseUrl/api/login'), // <-- add /api here
+    headers: {'Content-Type': 'application/json'},
+    body: json.encode({'email': email, 'password': password}),
+  );
+
+  if (res.statusCode == 200) {
+    final data = Map<String, dynamic>.from(json.decode(res.body));
+    return {
+      'userId': data['userId'],
+      'name': data['name'],
+      'role': data['role'],
+    };
   }
+
+  throw Exception(json.decode(res.body)['error'] ?? 'Login failed');
+}
 
   // ----- BLOOM LEVELS & VERBS -----
 

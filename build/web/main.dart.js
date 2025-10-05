@@ -87539,7 +87539,7 @@ return A.L($async$rt,r)},
 AA(a,b){return this.apk(a,b)},
 apk(a,b){var s=0,r=A.M(t.P),q,p,o,n,m,l
 var $async$AA=A.H(function(c,d){if(c===1)return A.J(d,r)
-while(true)switch(s){case 0:o=A.db("https://ilo-aiu-web.onrender.com/login")
+while(true)switch(s){case 0:o=A.db("https://ilo-aiu-web.onrender.com/api/login")
 n=t.N
 m=A.ar(["Content-Type","application/json"],n,n)
 s=3
