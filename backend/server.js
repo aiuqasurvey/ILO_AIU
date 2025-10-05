@@ -18,8 +18,9 @@ if (!process.env.DB_PATH) {
 const whitelist = [
   'http://localhost:5173',
   'http://127.0.0.1:5173',
-  'http://localhost:3000',
-  'https://ilo-aiu-web.onrender.com'
+  'http://localhost:5000',
+  'https://ilo-aiu-web.onrender.com',
+  'https://ilo-aiu.onrender.com' 
 ];
 
 app.use((req, res, next) => {
@@ -47,7 +48,12 @@ app.use((req, res, next) => {
 });
 
 // ================== MIDDLEWARE ==================
-app.use(express.json());
+app.use(express.json({ limit: '2mb' }));
+
+app.use((req, res, next) => {
+  console.log('➡️', req.method, req.url);
+  next();
+})
 
 // ================== DATABASE CONNECTION ==================
 const dbPath = path.resolve(__dirname, process.env.DB_PATH);
@@ -254,43 +260,37 @@ app.post('/api/signup', async (req, res) => {
 });
 
 app.post('/api/login', (req, res) => {
-  console.log('🟢 /api/login hit');
-  console.log('Request headers:', req.headers);
+  const { email, password } = req.body || {};
 
-  let bodyData = '';
-  req.on('data', (chunk) => (bodyData += chunk));
-  req.on('end', async () => {
-    console.log('Raw body:', bodyData);
-    let parsed;
-    try {
-      parsed = JSON.parse(bodyData);
-    } catch (e) {
-      console.error('❌ Invalid JSON from client:', e.message);
-      return res
-        .status(400)
-        .json({ error: 'Invalid JSON received from client' });
+  if (!email || !password) {
+    return res.status(400).json({ error: 'Email and password required' });
+  }
+
+  db.get('SELECT * FROM users WHERE email = ?', [email], async (err, user) => {
+    if (err) {
+      console.error('DB error:', err);
+      return res.status(500).json({ error: 'Database error' });
+    }
+    if (!user) {
+      return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    const { email, password } = parsed;
-    if (!email || !password)
-      return res.status(400).json({ error: 'Email and password required' });
+    const match = await bcrypt.compare(password, user.password);
+    if (!match) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
 
-    db.get('SELECT * FROM users WHERE email = ?', [email], async (err, user) => {
-      if (err) return res.status(500).json({ error: 'Database error' });
-      if (!user) return res.status(401).json({ error: 'Invalid credentials' });
-
-      const match = await bcrypt.compare(password, user.password);
-      if (!match) return res.status(401).json({ error: 'Invalid credentials' });
-
-      res.json({
-        message: 'Login successful',
-        userId: user.id,
-        name: user.name,
-        role: user.role,
-      });
+    // ✅ Always respond with JSON
+    res.setHeader('Content-Type', 'application/json');
+    res.json({
+      message: 'Login successful',
+      userId: user.id,
+      name: user.name,
+      role: user.role
     });
   });
 });
+
 
 
 
