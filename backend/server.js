@@ -7,14 +7,16 @@ const path = require('path');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+
 if (!process.env.DB_PATH) {
   console.error(' DB_PATH is not defined in .env file');
   process.exit(1);
 }
 
-// Database
+// -------------------- DATABASE -------------------- //
 const dbPath = path.resolve(__dirname, process.env.DB_PATH);
 console.log('DB_PATH from .env:', process.env.DB_PATH);
+
 const db = new sqlite3.Database(dbPath, (err) => {
   if (err) console.error(' Failed to connect to database:', err.message);
   else console.log('Connected to SQLite database.');
@@ -29,6 +31,7 @@ function runAsync(query, params = []) {
     });
   });
 }
+
 function allAsync(query, params = []) {
   return new Promise((resolve, reject) => {
     db.all(query, params, (err, rows) => {
@@ -38,19 +41,16 @@ function allAsync(query, params = []) {
   });
 }
 
-// Middlewares
-// Whitelist of allowed origins
+// -------------------- CORS -------------------- //
 const whitelist = [
-  'https://ilo-aiu-web.onrender.com', // Live frontend
-  'http://localhost:5173',            // Flutter web local dev
+  'https://ilo-aiu-web.onrender.com', // live frontend
+  'http://localhost:5173',            // local Flutter dev
   'http://127.0.0.1:5173',
-  'http://localhost:5000'             // local backend (for Postman)
+  'http://localhost:5000'             // Postman or local backend
 ];
 
-// CORS options
 const corsOptions = {
   origin: function (origin, callback) {
-    // allow requests with no origin (like Postman)
     if (!origin || whitelist.indexOf(origin) !== -1) {
       callback(null, true);
     } else {
@@ -59,18 +59,23 @@ const corsOptions = {
   },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true,
-  preflightContinue: false,
+  credentials: true
 };
 
-// Enable CORS for all routes
+// Apply CORS globally
 app.use(cors(corsOptions));
 
-// Handle preflight requests for all routes
+// Handle preflight OPTIONS requests for all routes
 app.options('*', cors(corsOptions));
 
+// -------------------- MIDDLEWARES -------------------- //
 app.use(express.json());
 
+// -------------------- ROUTES -------------------- //
+// Example: test route
+app.get('/api/test', (req, res) => {
+  res.json({ message: 'CORS works!', origin: req.headers.origin });
+});
 // -------------------- GET ROUTES -------------------- //
 
 // Get all faculties
@@ -581,27 +586,12 @@ app.post('/api/add-verb', (req, res) => {
   );
 });
 
-// --- Example API ---
-app.get('/api/test', (req, res) => {
-  db.get('SELECT datetime("now") AS current_time', [], (err, row) => {
-    if (err) {
-      console.error('Database error:', err);
-      res.status(500).json({ error: 'Database error' });
-    } else {
-      res.json({ message: 'Hello from backend!', time: row.current_time });
-    }
-  });
-});
-
-
 const flutterBuildPath = path.join(__dirname, '../build/web');
 app.use(express.static(flutterBuildPath));
 
 app.get(/.*/, (req, res) => {
   res.sendFile(path.join(flutterBuildPath, 'index.html'));
 });
-
-
 
 // -------------------- START SERVER -------------------- //
 app.listen(PORT, '0.0.0.0', () => {
