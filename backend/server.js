@@ -8,7 +8,7 @@ const path = require('path');
 const app = express();
 const PORT = process.env.PORT || 5000;
 if (!process.env.DB_PATH) {
-  console.error('❌ DB_PATH is not defined in .env file');
+  console.error(' DB_PATH is not defined in .env file');
   process.exit(1);
 }
 
@@ -16,8 +16,8 @@ if (!process.env.DB_PATH) {
 const dbPath = path.resolve(__dirname, process.env.DB_PATH);
 console.log('DB_PATH from .env:', process.env.DB_PATH);
 const db = new sqlite3.Database(dbPath, (err) => {
-  if (err) console.error('❌ Failed to connect to database:', err.message);
-  else console.log('✅ Connected to SQLite database.');
+  if (err) console.error(' Failed to connect to database:', err.message);
+  else console.log('Connected to SQLite database.');
 });
 
 // Helpers
@@ -39,7 +39,14 @@ function allAsync(query, params = []) {
 }
 
 // Middlewares
-app.use(cors({ origin:'https:ilo-frontend.onrender.com' }));
+app.use(cors({
+  origin: [
+    'https://ilo-aiu.onrender.com', 
+    'http://localhost:5000' 
+  ],
+  credentials: true
+}));
+
 app.use(express.json());
 
 // -------------------- GET ROUTES -------------------- //

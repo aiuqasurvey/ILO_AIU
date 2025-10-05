@@ -1,0 +1,5 @@
+// config.dart
+const String baseUrl = String.fromEnvironment(
+  'API_URL',
+  defaultValue: 'http://localhost:5000',
+);
