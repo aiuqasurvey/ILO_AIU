@@ -10,7 +10,7 @@ const PORT = process.env.PORT || 5000;
 
 // ================== DATABASE CHECK ==================
 if (!process.env.DB_PATH) {
-  console.error('❌ DB_PATH is not defined in .env file');
+  console.error(' DB_PATH is not defined in .env file');
   process.exit(1);
 }
 
@@ -19,33 +19,37 @@ const whitelist = [
   'http://localhost:5173',
   'http://127.0.0.1:5173',
   'http://localhost:5000',
+  'http://localhost:62031',
   'https://ilo-aiu-web.onrender.com',
-  'https://ilo-aiu.onrender.com' 
+  'https://ilo-aiu.onrender.com'
 ];
 
+const corsOptions = {
+  origin: function (origin, callback) {
+    console.log('CORS check for origin:', origin);
+    if (!origin || whitelist.includes(origin)) {
+      callback(null, true);
+    } else {
+      console.warn(' CORS blocked:', origin);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+};
 app.use((req, res, next) => {
   const origin = req.headers.origin;
-  console.log('🌍 CORS check for origin:', origin);
-
-  // Allow requests from Flutter dev ports (localhost:random)
-  if (
-    !origin ||
-    whitelist.includes(origin) ||
-    origin.startsWith('http://localhost:')
-  ) {
+  if (!origin || whitelist.includes(origin) || origin.startsWith('http://localhost:')) {
     res.header('Access-Control-Allow-Origin', origin || '*');
   }
-
   res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
   res.header('Access-Control-Allow-Headers', 'Content-Type,Authorization');
   res.header('Access-Control-Allow-Credentials', 'true');
-
-  if (req.method === 'OPTIONS') {
-    return res.sendStatus(200);
-  }
-
+  if (req.method === 'OPTIONS') return res.sendStatus(200);
   next();
 });
+
 
 // ================== MIDDLEWARE ==================
 app.use(express.json({ limit: '2mb' }));
@@ -58,9 +62,20 @@ app.use((req, res, next) => {
 // ================== DATABASE CONNECTION ==================
 const dbPath = path.resolve(__dirname, process.env.DB_PATH);
 const db = new sqlite3.Database(dbPath, (err) => {
-  if (err) console.error('❌ DB connection error:', err.message);
-  else console.log('✅ Connected to SQLite database.');
+  if (err) console.error('DB connection error:', err.message);
+  else console.log(' Connected to SQLite database.');
 });
+
+// -------------------- BODY PARSER -------------------- //
+app.use(express.json({ limit: '2mb' }));
+app.use(express.urlencoded({ extended: true }));
+
+// Debug log for incoming requests
+app.use((req, res, next) => {
+  console.log('➡️', req.method, req.url);
+  next();
+});
+
 
 // Helper Promises
 function allAsync(sql, params = []) {
@@ -260,35 +275,46 @@ app.post('/api/signup', async (req, res) => {
 });
 
 app.post('/api/login', (req, res) => {
-  const { email, password } = req.body || {};
+  try {
+    const { email, password } = req.body || {};
+    console.log('🔑 Login attempt for email:', email);
 
-  if (!email || !password) {
-    return res.status(400).json({ error: 'Email and password required' });
-  }
-
-  db.get('SELECT * FROM users WHERE email = ?', [email], async (err, user) => {
-    if (err) {
-      console.error('DB error:', err);
-      return res.status(500).json({ error: 'Database error' });
-    }
-    if (!user) {
-      return res.status(401).json({ error: 'Invalid credentials' });
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Email and password required' });
     }
 
-    const match = await bcrypt.compare(password, user.password);
-    if (!match) {
-      return res.status(401).json({ error: 'Invalid credentials' });
-    }
+    db.get('SELECT * FROM users WHERE email = ?', [email], async (err, user) => {
+      if (err) {
+        console.error(' DB error:', err);
+        return res.status(500).json({ error: 'Database error' });
+      }
 
-    // ✅ Always respond with JSON
-    res.setHeader('Content-Type', 'application/json');
-    res.json({
-      message: 'Login successful',
-      userId: user.id,
-      name: user.name,
-      role: user.role
+      if (!user) {
+        console.log('⚠️ User not found');
+        return res.status(401).json({ error: 'Invalid credentials' });
+      }
+
+      const match = await bcrypt.compare(password, user.password);
+      if (!match) {
+        console.log('⚠️ Invalid password');
+        return res.status(401).json({ error: 'Invalid credentials' });
+      }
+
+      console.log('✅ Login successful:', user.email);
+
+      // ✅ Always send proper JSON
+      res.setHeader('Content-Type', 'application/json');
+      return res.status(200).json({
+        message: 'Login successful',
+        userId: user.id,
+        name: user.name,
+        role: user.role
+      });
     });
-  });
+  } catch (err) {
+    console.error('🔥 Login route error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
 });
 
 
@@ -617,21 +643,23 @@ app.post('/api/add-verb', (req, res) => {
   );
 });
 
-// ---------- FALLBACK: SERVE FLUTTER ----------
+// -------------------- GLOBAL ERROR HANDLER -------------------- //
+app.use((err, req, res, next) => {
+  console.error(' Server error:', err.stack || err);
+  if (!res.headersSent) {
+    res.status(500).json({ error: err.message || 'Internal Server Error' });
+  }
+});
+
+// -------------------- DEPLOYMENT -------------------- //
 const flutterBuildPath = path.join(__dirname, '../build/web');
 app.use(express.static(flutterBuildPath));
+
 app.get(/^\/(?!api\/).*/, (req, res) => {
   res.sendFile(path.join(flutterBuildPath, 'index.html'));
 });
 
-// ---------- ERROR HANDLER ----------
-app.use((err, req, res, next) => {
-  console.error('Server error:', err);
-  res
-    .status(500)
-    .json({ error: err.message || 'Internal Server Error (fallback)' });
+// -------------------- START SERVER -------------------- //
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(` Server running at http://0.0.0.0:${PORT}`);
 });
-
-// ---------- START SERVER ----------
-app.listen(PORT, '0.0.0.0', () =>
-  console.log(`🚀 Server running on http://localhost:${PORT}`));
