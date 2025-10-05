@@ -8,92 +8,72 @@ const path = require('path');
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// ================== DATABASE CHECK ==================
 if (!process.env.DB_PATH) {
-  console.error(' DB_PATH is not defined in .env file');
+  console.error('❌ DB_PATH is not defined in .env file');
   process.exit(1);
 }
 
+// ================== CORS CONFIG ==================
 const whitelist = [
-  'http://localhost:5173', 
+  'http://localhost:5173',
   'http://127.0.0.1:5173',
+  'http://localhost:3000',
   'https://ilo-aiu-web.onrender.com'
 ];
 
-const corsOptions = {
-  origin: function (origin, callback) {
-    console.log('CORS check for origin:', origin);
-
-    if (!origin || whitelist.includes(origin)) {
-      callback(null, true);
-    } else if (origin.startsWith('http://localhost:')) {
-      // Allow any localhost port
-      callback(null, true);
-    } else {
-      console.warn('CORS blocked:', origin);
-      callback(null, false); // never crash
-    }
-  },
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true
-};
-
-
-app.use(cors(corsOptions));
-
-// Handle preflight requests globally
-app.options('*', cors(corsOptions), (req, res) => {
-  res.sendStatus(200);
-});
-
-
-app.use(cors(corsOptions));
-app.options('*', cors(corsOptions), (req, res) => {
-  res.sendStatus(200);
-});
 app.use((req, res, next) => {
-  console.log('Request origin:', req.headers.origin);
+  const origin = req.headers.origin;
+  console.log('🌍 CORS check for origin:', origin);
+
+  // Allow requests from Flutter dev ports (localhost:random)
+  if (
+    !origin ||
+    whitelist.includes(origin) ||
+    origin.startsWith('http://localhost:')
+  ) {
+    res.header('Access-Control-Allow-Origin', origin || '*');
+  }
+
+  res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type,Authorization');
+  res.header('Access-Control-Allow-Credentials', 'true');
+
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(200);
+  }
+
   next();
 });
 
-// -------------------- MIDDLEWARES -------------------- //
+// ================== MIDDLEWARE ==================
 app.use(express.json());
 
-app.use(cors({ origin: true, credentials: true }));
-
-
-// -------------------- DATABASE -------------------- //
+// ================== DATABASE CONNECTION ==================
 const dbPath = path.resolve(__dirname, process.env.DB_PATH);
-console.log('DB_PATH from .env:', process.env.DB_PATH);
-
 const db = new sqlite3.Database(dbPath, (err) => {
-  if (err) console.error(' Failed to connect to database:', err.message);
-  else console.log('Connected to SQLite database.');
+  if (err) console.error('❌ DB connection error:', err.message);
+  else console.log('✅ Connected to SQLite database.');
 });
 
-// Helpers
-function runAsync(query, params = []) {
+// Helper Promises
+function allAsync(sql, params = []) {
   return new Promise((resolve, reject) => {
-    db.run(query, params, function (err) {
-      if (err) reject(err);
-      else resolve({ lastID: this.lastID, changes: this.changes });
-    });
-  });
-}
-
-function allAsync(query, params = []) {
-  return new Promise((resolve, reject) => {
-    db.all(query, params, (err, rows) => {
+    db.all(sql, params, (err, rows) => {
       if (err) reject(err);
       else resolve(rows);
     });
   });
 }
 
-app.use((err, req, res, next) => {
-  console.error('Server error:', err);
-  res.status(500).json({ error: err.message || 'Internal Server Error' });
-});
+function runAsync(sql, params = []) {
+  return new Promise((resolve, reject) => {
+    db.run(sql, params, function (err) {
+      if (err) reject(err);
+      else resolve({ lastID: this.lastID, changes: this.changes });
+    });
+  });
+}
 
 // -------------------- ROUTES -------------------- //
 // Example: test route
@@ -273,24 +253,45 @@ app.post('/api/signup', async (req, res) => {
   });
 });
 
-//login
 app.post('/api/login', (req, res) => {
-  const { email, password } = req.body || {};
+  console.log('🟢 /api/login hit');
+  console.log('Request headers:', req.headers);
 
-  if (!email || !password) {
-    return res.status(400).json({ error: 'Email and password required' });
-  }
+  let bodyData = '';
+  req.on('data', (chunk) => (bodyData += chunk));
+  req.on('end', async () => {
+    console.log('Raw body:', bodyData);
+    let parsed;
+    try {
+      parsed = JSON.parse(bodyData);
+    } catch (e) {
+      console.error('❌ Invalid JSON from client:', e.message);
+      return res
+        .status(400)
+        .json({ error: 'Invalid JSON received from client' });
+    }
 
-  db.get('SELECT * FROM users WHERE email = ?', [email], async (err, user) => {
-    if (err) return res.status(500).json({ error: 'Database error' });
-    if (!user) return res.status(401).json({ error: 'Invalid credentials' });
+    const { email, password } = parsed;
+    if (!email || !password)
+      return res.status(400).json({ error: 'Email and password required' });
 
-    const match = await bcrypt.compare(password, user.password);
-    if (!match) return res.status(401).json({ error: 'Invalid credentials' });
+    db.get('SELECT * FROM users WHERE email = ?', [email], async (err, user) => {
+      if (err) return res.status(500).json({ error: 'Database error' });
+      if (!user) return res.status(401).json({ error: 'Invalid credentials' });
 
-    res.json({ message: 'Login successful', userId: user.id, name: user.name, role: user.role });
+      const match = await bcrypt.compare(password, user.password);
+      if (!match) return res.status(401).json({ error: 'Invalid credentials' });
+
+      res.json({
+        message: 'Login successful',
+        userId: user.id,
+        name: user.name,
+        role: user.role,
+      });
+    });
   });
 });
+
 
 
 
@@ -616,15 +617,21 @@ app.post('/api/add-verb', (req, res) => {
   );
 });
 
-
+// ---------- FALLBACK: SERVE FLUTTER ----------
 const flutterBuildPath = path.join(__dirname, '../build/web');
 app.use(express.static(flutterBuildPath));
-
 app.get(/^\/(?!api\/).*/, (req, res) => {
   res.sendFile(path.join(flutterBuildPath, 'index.html'));
 });
 
-// -------------------- START SERVER -------------------- //
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 Server running at http://0.0.0.0:${PORT}`);
+// ---------- ERROR HANDLER ----------
+app.use((err, req, res, next) => {
+  console.error('Server error:', err);
+  res
+    .status(500)
+    .json({ error: err.message || 'Internal Server Error (fallback)' });
 });
+
+// ---------- START SERVER ----------
+app.listen(PORT, '0.0.0.0', () =>
+  console.log(`🚀 Server running on http://localhost:${PORT}`));
