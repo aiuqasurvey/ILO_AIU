@@ -167,26 +167,39 @@ Future<void> updateILO(int submissionId, Map<String, dynamic> updatedData) async
 }
 
 
-  Future<Map<String, dynamic>> login({
+ Future<Map<String, dynamic>> login({
   required String email,
   required String password,
 }) async {
   final res = await http.post(
-    Uri.parse('$baseUrl/api/login'), 
+    Uri.parse('$baseUrl/api/login'),
     headers: {'Content-Type': 'application/json'},
     body: json.encode({'email': email, 'password': password}),
   );
 
-  if (res.statusCode == 200) {
-    final data = Map<String, dynamic>.from(json.decode(res.body));
-    return {
-      'userId': data['userId'],
-      'name': data['name'],
-      'role': data['role'],
-    };
-  }
+  print('Status code: ${res.statusCode}');
+  print('Response body: ${res.body}');
 
-  throw Exception(json.decode(res.body)['error'] ?? 'Login failed');
+  if (res.statusCode == 200) {
+    try {
+      final data = Map<String, dynamic>.from(json.decode(res.body));
+      return {
+        'userId': data['userId'],
+        'name': data['name'],
+        'role': data['role'],
+      };
+    } catch (e) {
+      throw Exception('Invalid JSON received from server');
+    }
+  } else {
+    // Try decoding error from JSON, fallback to generic message
+    try {
+      final errorData = json.decode(res.body);
+      throw Exception(errorData['error'] ?? 'Login failed');
+    } catch (_) {
+      throw Exception('Login failed: ${res.statusCode}');
+    }
+  }
 }
 
   // ----- BLOOM LEVELS & VERBS -----
