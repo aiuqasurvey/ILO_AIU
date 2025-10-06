@@ -3,7 +3,7 @@ import 'package:flutter/foundation.dart' show debugPrint, kReleaseMode;
 import 'package:http/http.dart' as http;
 
 final String baseUrl = kReleaseMode
-    ? 'https://ilo-aiu-web.onrender.com/api'
+    ? 'https://ilo-aiu.onrender.com/api'
     : 'http://localhost:5000/api';
 
 dynamic safeJsonDecode(String body) {

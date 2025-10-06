@@ -87501,7 +87501,7 @@ return A.J($async$zt,r)},
 k7(a){return this.YI(a)},
 YI(a){var s=0,r=A.K(t.b5),q,p,o,n,m,l,k,j,i
 var $async$k7=A.G(function(b,c){if(b===1)return A.H(c,r)
-while(true)switch(s){case 0:k=A.f2("https://ilo-aiu-web.onrender.com/api/"+a)
+while(true)switch(s){case 0:k=A.f2("https://ilo-aiu.onrender.com/api/"+a)
 j=t.N
 s=3
 return A.N(A.aWx(k,A.au(["Content-Type","application/json"],j,j)),$async$k7)
@@ -87521,7 +87521,7 @@ return A.J($async$k7,r)},
 qY(a,b){return this.ar4(a,b)},
 ar4(a,b){var s=0,r=A.K(t.a),q,p,o,n,m,l,k,j,i
 var $async$qY=A.G(function(c,d){if(c===1)return A.H(d,r)
-while(true)switch(s){case 0:j=A.f2("https://ilo-aiu-web.onrender.com/api/"+a)
+while(true)switch(s){case 0:j=A.f2("https://ilo-aiu.onrender.com/api/"+a)
 i=t.N
 i=A.au(["Content-Type","application/json"],i,i)
 s=3
@@ -87542,7 +87542,7 @@ return A.J($async$qY,r)},
 B7(a,b){return this.ar3(a,b)},
 ar3(a,b){var s=0,r=A.K(t.H),q,p,o,n
 var $async$B7=A.G(function(c,d){if(c===1)return A.H(d,r)
-while(true)switch(s){case 0:o=A.f2("https://ilo-aiu-web.onrender.com/api/"+a)
+while(true)switch(s){case 0:o=A.f2("https://ilo-aiu.onrender.com/api/"+a)
 n=t.N
 n=A.au(["Content-Type","application/json"],n,n)
 s=2
@@ -87557,7 +87557,7 @@ return A.J($async$B7,r)},
 oK(a,b,c){return this.arr(0,b,c)},
 arr(a,b,c){var s=0,r=A.K(t.H),q,p,o,n
 var $async$oK=A.G(function(d,e){if(d===1)return A.H(e,r)
-while(true)switch(s){case 0:o=A.f2("https://ilo-aiu-web.onrender.com/api/"+b)
+while(true)switch(s){case 0:o=A.f2("https://ilo-aiu.onrender.com/api/"+b)
 n=t.N
 n=A.au(["Content-Type","application/json"],n,n)
 s=2
@@ -87572,7 +87572,7 @@ return A.J($async$oK,r)},
 zs(a,b){return this.alu(0,b)},
 alu(a,b){var s=0,r=A.K(t.H),q,p,o,n
 var $async$zs=A.G(function(c,d){if(c===1)return A.H(d,r)
-while(true)switch(s){case 0:p=A.f2("https://ilo-aiu-web.onrender.com/api/"+b)
+while(true)switch(s){case 0:p=A.f2("https://ilo-aiu.onrender.com/api/"+b)
 o=t.N
 s=2
 return A.N(A.aIw(p,A.au(["Content-Type","application/json"],o,o)),$async$zs)
