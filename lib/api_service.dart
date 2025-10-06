@@ -2,20 +2,22 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart' show debugPrint, kReleaseMode;
 import 'package:http/http.dart' as http;
 
-/// Automatically selects API based on environment
 final String baseUrl = kReleaseMode
-    ? 'https://ilo-aiu-web.onrender.com/api' // live
-    : 'http://localhost:5000/api';           // local
+    ? 'https://ilo-aiu-web.onrender.com/api'
+    : 'http://localhost:5000/api';
 
-/// Safe JSON decode
 dynamic safeJsonDecode(String body) {
   if (body.isEmpty) throw Exception('Empty response from server');
+  if (body.startsWith('<!DOCTYPE html>')) {
+    throw Exception('HTML response instead of JSON — likely a bad API URL or server misroute.');
+  }
   try {
     return json.decode(body);
   } catch (e) {
     throw Exception('Invalid JSON response: $body');
   }
 }
+
 
 class ApiService {
   // ------------------ GET ------------------

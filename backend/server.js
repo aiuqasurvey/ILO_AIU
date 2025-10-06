@@ -8,36 +8,15 @@ const path = require('path');
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// ================== DATABASE CHECK ==================
-if (!process.env.DB_PATH) {
-  console.error(' DB_PATH is not defined in .env file');
-  process.exit(1);
-}
-
 // ================== CORS CONFIG ==================
 const whitelist = [
   'http://localhost:5173',
   'http://127.0.0.1:5173',
   'http://localhost:5000',
-  'http://localhost:62031',
   'https://ilo-aiu-web.onrender.com',
   'https://ilo-aiu.onrender.com'
 ];
 
-const corsOptions = {
-  origin: function (origin, callback) {
-    console.log('CORS check for origin:', origin);
-    if (!origin || whitelist.includes(origin)) {
-      callback(null, true);
-    } else {
-      console.warn(' CORS blocked:', origin);
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
-};
 app.use((req, res, next) => {
   const origin = req.headers.origin;
   if (!origin || whitelist.includes(origin) || origin.startsWith('http://localhost:')) {
@@ -50,43 +29,28 @@ app.use((req, res, next) => {
   next();
 });
 
-
 // ================== MIDDLEWARE ==================
 app.use(express.json({ limit: '2mb' }));
+app.use(express.urlencoded({ extended: true }));
 
 app.use((req, res, next) => {
   console.log('➡️', req.method, req.url);
   next();
-})
+});
 
 // ================== DATABASE CONNECTION ==================
 const dbPath = path.resolve(__dirname, process.env.DB_PATH);
 const db = new sqlite3.Database(dbPath, (err) => {
   if (err) console.error('DB connection error:', err.message);
-  else console.log(' Connected to SQLite database.');
+  else console.log('✅ Connected to SQLite database.');
 });
 
-// -------------------- BODY PARSER -------------------- //
-app.use(express.json({ limit: '2mb' }));
-app.use(express.urlencoded({ extended: true }));
-
-// Debug log for incoming requests
-app.use((req, res, next) => {
-  console.log('➡️', req.method, req.url);
-  next();
-});
-
-
-// Helper Promises
+// ================== HELPER FUNCTIONS ==================
 function allAsync(sql, params = []) {
   return new Promise((resolve, reject) => {
-    db.all(sql, params, (err, rows) => {
-      if (err) reject(err);
-      else resolve(rows);
-    });
+    db.all(sql, params, (err, rows) => (err ? reject(err) : resolve(rows)));
   });
 }
-
 function runAsync(sql, params = []) {
   return new Promise((resolve, reject) => {
     db.run(sql, params, function (err) {
@@ -96,11 +60,10 @@ function runAsync(sql, params = []) {
   });
 }
 
-// -------------------- ROUTES -------------------- //
-// Example: test route
 app.get('/api/test', (req, res) => {
-  res.json({ message: 'CORS works!', origin: req.headers.origin });
+  res.json({ message: 'API is alive!', origin: req.headers.origin });
 });
+
 // -------------------- GET ROUTES -------------------- //
 
 // Get all faculties
@@ -277,32 +240,19 @@ app.post('/api/signup', async (req, res) => {
 app.post('/api/login', (req, res) => {
   try {
     const { email, password } = req.body || {};
-    console.log('🔑 Login attempt for email:', email);
+    console.log('🔑 Login attempt:', email);
 
     if (!email || !password) {
       return res.status(400).json({ error: 'Email and password required' });
     }
 
     db.get('SELECT * FROM users WHERE email = ?', [email], async (err, user) => {
-      if (err) {
-        console.error(' DB error:', err);
-        return res.status(500).json({ error: 'Database error' });
-      }
-
-      if (!user) {
-        console.log('⚠️ User not found');
-        return res.status(401).json({ error: 'Invalid credentials' });
-      }
+      if (err) return res.status(500).json({ error: 'Database error' });
+      if (!user) return res.status(401).json({ error: 'Invalid credentials' });
 
       const match = await bcrypt.compare(password, user.password);
-      if (!match) {
-        console.log('⚠️ Invalid password');
-        return res.status(401).json({ error: 'Invalid credentials' });
-      }
+      if (!match) return res.status(401).json({ error: 'Invalid credentials' });
 
-      console.log('✅ Login successful:', user.email);
-
-      // ✅ Always send proper JSON
       res.setHeader('Content-Type', 'application/json');
       return res.status(200).json({
         message: 'Login successful',
@@ -311,16 +261,11 @@ app.post('/api/login', (req, res) => {
         role: user.role
       });
     });
-  } catch (err) {
-    console.error('🔥 Login route error:', err);
+  } catch (e) {
+    console.error(e);
     res.status(500).json({ error: 'Server error' });
   }
 });
-
-
-
-
-
 
 // -------------------- CURRICULUMS -------------------- //
 
@@ -650,16 +595,21 @@ app.use((err, req, res, next) => {
     res.status(500).json({ error: err.message || 'Internal Server Error' });
   }
 });
+// 
+app.use('/api', (req, res) => {
+  res.status(404).json({ error: 'API endpoint not found' });
+});
 
-// -------------------- DEPLOYMENT -------------------- //
+// ================== STATIC FRONTEND ==================
 const flutterBuildPath = path.join(__dirname, '../build/web');
 app.use(express.static(flutterBuildPath));
 
-app.get(/^\/(?!api\/).*/, (req, res) => {
+// ✅ Catch-all for Flutter web routes ONLY (AFTER /api is defined)
+app.get('*', (req, res) => {
   res.sendFile(path.join(flutterBuildPath, 'index.html'));
 });
 
-// -------------------- START SERVER -------------------- //
+// ================== START SERVER ==================
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(` Server running at http://0.0.0.0:${PORT}`);
+  console.log(`🚀 Server running on port ${PORT}`);
 });
