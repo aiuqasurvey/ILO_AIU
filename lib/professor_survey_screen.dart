@@ -222,7 +222,7 @@ class _ProfessorSurveyScreenState extends State<ProfessorSurveyScreen> {
                   // Curriculum
                   DropdownButtonFormField<String>(
                     value: _selectedCurriculumId,
-                    decoration: const InputDecoration(labelText: 'الخطة الدراسية'),
+                    decoration: const InputDecoration(labelText: 'المقرر الدراسي'),
                     items: _curriculums
                         .map((c) => DropdownMenuItem(
                               value: c['id'].toString(),
