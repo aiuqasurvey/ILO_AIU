@@ -238,21 +238,39 @@ app.post('/api/signup', async (req, res) => {
 });
 
 app.post('/api/login', (req, res) => {
+  console.log('🟡 LOGIN ROUTE HIT');
+  console.log('Headers:', req.headers);
+  console.log('Body:', req.body);
+
   try {
     const { email, password } = req.body || {};
     console.log('🔑 Login attempt:', email);
 
     if (!email || !password) {
+      console.log('❌ Missing fields');
       return res.status(400).json({ error: 'Email and password required' });
     }
 
     db.get('SELECT * FROM users WHERE email = ?', [email], async (err, user) => {
-      if (err) return res.status(500).json({ error: 'Database error' });
-      if (!user) return res.status(401).json({ error: 'Invalid credentials' });
+      if (err) {
+        console.error('❌ DB error:', err);
+        return res.status(500).json({ error: 'Database error' });
+      }
+
+      if (!user) {
+        console.log('⚠️ User not found:', email);
+        return res.status(401).json({ error: 'Invalid credentials' });
+      }
 
       const match = await bcrypt.compare(password, user.password);
-      if (!match) return res.status(401).json({ error: 'Invalid credentials' });
+      console.log('🔍 Password match:', match);
 
+      if (!match) {
+        console.log('⚠️ Wrong password for:', email);
+        return res.status(401).json({ error: 'Invalid credentials' });
+      }
+
+      console.log('✅ Login success:', email);
       res.setHeader('Content-Type', 'application/json');
       return res.status(200).json({
         message: 'Login successful',
@@ -262,10 +280,11 @@ app.post('/api/login', (req, res) => {
       });
     });
   } catch (e) {
-    console.error(e);
+    console.error('🔥 Login crash:', e);
     res.status(500).json({ error: 'Server error' });
   }
 });
+
 
 // -------------------- CURRICULUMS -------------------- //
 
