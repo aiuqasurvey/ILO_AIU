@@ -12,10 +12,21 @@ const PORT = process.env.PORT || 5000;
 const whitelist = [
   'http://localhost:5173',
   'http://127.0.0.1:5173',
-  'http://localhost:5000',
-  'https://ilo-aiu-web.onrender.com',
+  'https://ilo-aiu-web.onrender.com', // frontend live
   'https://ilo-aiu.onrender.com'
 ];
+
+app.use(cors({
+  origin: function(origin, callback) {
+    if (!origin) return callback(null, true); // allow server-to-server or curl
+    if (whitelist.includes(origin)) return callback(null, true);
+    callback(new Error('CORS not allowed for ' + origin));
+  },
+  methods: ['GET','POST','PUT','DELETE','OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true,
+}));
+app.options('*', cors());
 
 app.use((req, res, next) => {
   const origin = req.headers.origin;
